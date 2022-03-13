@@ -1,0 +1,8 @@
+﻿  taskFromRavTech.c
+C:\Users\Yonatan\source\repos\taskFromRavTech\taskFromRavTech.c(42,19): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Yonatan\source\repos\taskFromRavTech\taskFromRavTech.c(70,19): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Yonatan\source\repos\taskFromRavTech\taskFromRavTech.c(94,17): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Yonatan\source\repos\taskFromRavTech\taskFromRavTech.c(143,6): warning C4013: 'free' undefined; assuming extern returning int
+C:\Users\Yonatan\source\repos\taskFromRavTech\taskFromRavTech.c(189,26): warning C4013: 'malloc' undefined; assuming extern returning int
+C:\Users\Yonatan\source\repos\taskFromRavTech\taskFromRavTech.c(114): warning C4172: returning address of local variable or temporary: date
+  taskFromRavTech.vcxproj -> C:\Users\Yonatan\source\repos\taskFromRavTech\Debug\taskFromRavTech.exe

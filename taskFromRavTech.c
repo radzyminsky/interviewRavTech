@@ -21,6 +21,7 @@ typedef struct Line_ Line;
 
 typedef int (*fun_ptr)(Line*, char*);
 void addToSumList(Line* lin);
+
 void init_fname_lname(Line* l, char* temp, int num_field) {
 	char err_msg[30];
 	char* field;
@@ -197,7 +198,7 @@ Line* createNewLine(char* string) {
 }
 
 void sort(Line** point_to_this_link) {
-
+	extern Line* head_sumList;
 	Line* this_link = *point_to_this_link;
 	while (this_link->next && (this_link->next->debt > this_link->debt))
 	{
@@ -208,13 +209,19 @@ void sort(Line** point_to_this_link) {
 	}
 }
 
-int addNewLine(char* string) {
+int addNewLine(char* string, FILE* file) {
 	extern Line* head;
 	Line* new_line = createNewLine(string);	//create new item in list
 
 	if (!new_line)
 		return 0;
 
+	if (file) {//that is the "set"function, call now
+		char date[20];
+		strftime(date, 20, "%x", &new_line->date);
+		fprintf(file, "%s,%s,%s,%s,%s,%d\n",
+			new_line->id, new_line->fname, new_line->lname, new_line->fon_number, date, new_line->debt);
+	}
 	new_line->next = head;
 	head = new_line;
 	sort(&head);
@@ -222,8 +229,8 @@ int addNewLine(char* string) {
 	return 1;
 }
 
-void set(char* str) {
-	addNewLine(str + 4);
+void set(char* str, FILE* file) {
+	addNewLine(str + 4,file);
 }
 
 void printOne(Line* l) {
@@ -362,23 +369,19 @@ fun_ptr command_smaller(char* str1, char* str2) {
 	return fun;
 }
 
-void commands() {
+void commands(FILE *file) {
 	extern Line* head, * head_sumList;
 	fun_ptr fun = NULL;
 	char str[100] = "", * c;
 
 
-	while (strncmp(str, "qite\n", 5)) {
-		/// </summary>
-		printList(head);
-		printf("\n---sum list---\n");
-		printList(head_sumList);
-		///
+	while (strncmp(str, "qite", 4)) {
+		
 		printf(">>\n");
 		fgets(str, 100, stdin);
 
 		if (!strncmp(str, "set ", 4)) {
-			set(str);
+			set(str,file);
 			continue;
 		}
 		else if (c = strchr(str, '=')) {
@@ -402,14 +405,13 @@ void commands() {
 	}
 }
 
-void updateSumList(Line* this_line, Line* lin) {
-
-	this_line->debt += lin->debt;
-	if (date_larger2(&this_line->date, &lin->date))
-		this_line->date = lin->date;
-	sort(&this_line);
+void updateSumList(Line** this_line, Line* lin) {
+	Line* temp = *this_line;
+	temp->debt += lin->debt;
+	if (date_larger2(&temp->date, &lin->date))
+		temp->date = lin->date;
+	sort(this_line);
 }
-
 void addToSumList(Line* lin) {
 	extern Line* head_sumList;
 
@@ -417,32 +419,23 @@ void addToSumList(Line* lin) {
 	if (!newL)
 		return;
 	*newL = *lin;
-	Line* this_line = head_sumList;
-	while (this_line) {
-		if (!strcmp(this_line->id, newL->id)) {
+	Line** this_line = &head_sumList;
+	while (*this_line) {
+		//checks if it's "id" ,already exist in "sumList"
+		if (!strcmp((*this_line)->id, newL->id)) {
 			updateSumList(this_line, newL);
 			return;
 		}
-		this_line = this_line->next;
+		this_line = &(*this_line)->next;
 	}
 	newL->next = head_sumList;
 	head_sumList = newL;
 	sort(&head_sumList);
 }
 
-//global vuriable to the lists
-Line* head = NULL, * head_sumList = NULL;
-
-int main()
-{
+int readAndWriteFile(FILE* file){
 	char string[200];
 	int sucsses = 0;
-
-	FILE* file = fopen("taskRavTech.csv", "a+t");
-
-	if (!file)
-		return -1;
-
 
 	//ignore from high line
 	while (fgetc(file) != '\n') {};
@@ -450,19 +443,38 @@ int main()
 	while (fgets(string, 200, file))
 	{
 		//create new item in list
-		sucsses = addNewLine(string);
+		sucsses = addNewLine(string, NULL);
 		if (!sucsses)
 			return -1;
 	}
+	return sucsses;
+}
 
-	fclose(file);
+
+//global vuriable to the lists
+Line* head = NULL, * head_sumList = NULL;
+
+int main()
+{
+	int sucsses = 0;
+
+	FILE* file = fopen("taskRavTech.csv", "a+t");
+	if (!file)
+		return -1;
+
+	sucsses=readAndWriteFile(file);
+
+	if (!sucsses)
+		return-1;
 
 	//print all list
 	printList(head);
 	printf("\n---sum list---\n");
 	printList(head_sumList);
 
-	commands();
+	commands(file);
+
+	fclose(file);
 
 	freeList(head);
 	freeList(head_sumList);
