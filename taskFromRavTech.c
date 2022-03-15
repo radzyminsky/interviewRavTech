@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#include <stdlib.h>
 
 #pragma warning(disable : 4996)
 
@@ -25,6 +26,7 @@ void addToSumList(Line* lin);
 void init_fname_lname(Line* l, char* temp, int num_field) {
 	char err_msg[30];
 	char* field;
+	unsigned int i;
 	switch (num_field)
 	{
 	case 1:
@@ -37,9 +39,9 @@ void init_fname_lname(Line* l, char* temp, int num_field) {
 		break;
 	default:
 		field = NULL;
-		break;
+		return;//failure, mistake
 	}
-	for (int i = 0;i < strlen(temp);i++) {
+	for ( i = 0;i < strlen(temp);i++) {
 		if (temp[i] < 'A' || temp[i]>'z') {
 			strcat(l->err_msg, err_msg);
 			break;
@@ -53,6 +55,7 @@ void init_fname_lname(Line* l, char* temp, int num_field) {
 void init_id_fon(Line* l, char* temp, int num_field) {
 	char err_msg[30];
 	char* field;
+	unsigned int i;
 	switch (num_field)
 	{
 	case 1:
@@ -65,9 +68,9 @@ void init_id_fon(Line* l, char* temp, int num_field) {
 		break;
 	default:
 		field = NULL;
-		break;
+		return;//failure, mistake
 	}
-	for (int i = 0;i < strlen(temp);i++) {
+	for ( i = 0;i < strlen(temp);i++) {
 		if (temp[i] < '0' || temp[i]>'9') {
 			strcat(l->err_msg, err_msg);
 			break;
@@ -80,10 +83,12 @@ void init_id_fon(Line* l, char* temp, int num_field) {
 
 }
 
-struct tm* str_to_date(char* arg) {
-
+int str_to_date(char* arg,struct tm* ptr_tm) {
+	int success = 0;
 	int dd_mm_yy[] = { 0,0,0 }, year;
-	int i, j = 0, its_err = 0;
+	struct tm date = { 0, 0, 0,1,1,1, 0, 0, 0 };
+	int its_err = 0;
+	unsigned int i,j;
 	char* str, string[50], delim[] = "./\\";
 
 	strcpy(string, arg);
@@ -104,26 +109,26 @@ struct tm* str_to_date(char* arg) {
 	if (str)	//that is the date has mor than "dd/mm/yy"
 		its_err = 1;
 	if (its_err) {
-		return NULL;
+		return success;
 	}
 	if (dd_mm_yy[2] < 100)
 		year = dd_mm_yy[2];
 	else
 		year = dd_mm_yy[2] - 1900;
-	struct tm date = { 0, 0, 0, dd_mm_yy[1], dd_mm_yy[0] - 1,year, 0, 0, 0 };
-	return &date;
 
+	date.tm_year = year;
+	date.tm_mon = dd_mm_yy[0]-1;
+	date.tm_mday = dd_mm_yy[1];
+	*ptr_tm = date;
+	return success = 1;
 }
 
 void init_date(Line* l, char* arg) {
-	struct tm* date = str_to_date(arg);
-	if (date)
-		l->date = *date;
-	else {
-		struct tm d = { 0, 0, 0, 1,1,1, 0, 0, 0 };
-		l->date = d;
+	struct tm date = { 0, 0, 0, 1,1,1, 0, 0, 0 };
+
+	if (!str_to_date(arg, &date))
 		strcat(l->err_msg, "error in date field, ");
-	}
+	l->date = date;
 }
 
 void init_debt(Line* l, char* temp) {
@@ -216,7 +221,7 @@ int addNewLine(char* string, FILE* file) {
 	if (!new_line)
 		return 0;
 
-	if (file) {//that is the "set"function, call now
+	if (file) {//that is the "set"function, call this function
 		char date[20];
 		strftime(date, 20, "%x", &new_line->date);
 		fprintf(file, "%s,%s,%s,%s,%s,%d\n",
@@ -272,13 +277,13 @@ int fon_equ(Line* l, char* fon_number) {
 	return (!strcmp(l->fon_number, fon_number));
 }
 int date_equ(Line* l, char* date) {
-	struct tm* d = str_to_date(date);
-	if (d) {
+	struct tm d; 
+	if (str_to_date(date,&d)) {
 		/*time_t t = mktime(&(*d));
 		int n= !difftime(mktime(&l->date), t);*/
-		return(l->date.tm_year == d->tm_year &&
-			l->date.tm_mon == d->tm_mon &&
-			l->date.tm_mday == d->tm_mday);
+		return(l->date.tm_year == d.tm_year &&
+			l->date.tm_mon == d.tm_mon &&
+			l->date.tm_mday == d.tm_mday);
 	}
 	return 0;
 }
@@ -295,10 +300,10 @@ int date_larger2(struct tm* d1, struct tm* d2) {
 	return n;
 }
 int date_larger(Line* l, char* date) {
-	struct tm* d = str_to_date(date);
+	struct tm d;
 	int n;
-	if (d) {
-		n = date_larger2(&l->date, d);
+	if (str_to_date(date,&d)) {
+		n = date_larger2(&l->date, &d);
 		return n;
 	}
 	return 0;
@@ -372,17 +377,14 @@ fun_ptr command_smaller(char* str1, char* str2) {
 void commands(FILE *file) {
 	extern Line* head, * head_sumList;
 	fun_ptr fun = NULL;
-	char str[100] = "", * c;
+	char str[100] = "", * c=NULL;
 
-
-	while (strncmp(str, "qite", 4)) {
-		
-		printf(">>\n");
-		fgets(str, 100, stdin);
+	printf(">>\n");
+	fgets(str, 100, stdin);
+	while (strncmp(str, "quit", 4)) {
 
 		if (!strncmp(str, "set ", 4)) {
 			set(str,file);
-			continue;
 		}
 		else if (c = strchr(str, '=')) {
 			fun = command_equal(strtok(str, "="), strtok(c + 1, "\n"));
@@ -393,15 +395,19 @@ void commands(FILE *file) {
 		else if (c = strchr(str, '>')) {
 			fun = command_larger(strtok(str, ">"), strtok(c + 1, "\n"));
 		}
-		if (!fun) {
+		else {
 			printf("\"%s\": isn't command, error..\n", strtok(str, "\n"));
-			continue;
 		}
-		if (!strcmp(str, "date"))
-			search(fun, head, c + 1);
-		else
-			search(fun, head_sumList, c + 1);
+		if (fun&&c) {
+			if (!strcmp(str, "date"))
+				search(fun, head, c + 1);
+			else
+				search(fun, head_sumList, c + 1);
+			fun = NULL;
+		}
 
+		printf(">>\n");
+		fgets(str, 100, stdin);
 	}
 }
 
@@ -415,11 +421,11 @@ void updateSumList(Line** this_line, Line* lin) {
 void addToSumList(Line* lin) {
 	extern Line* head_sumList;
 
-	Line* newL = createNewLine(NULL);
+	Line** this_line,* newL = createNewLine(NULL);
 	if (!newL)
 		return;
 	*newL = *lin;
-	Line** this_line = &head_sumList;
+	this_line = &head_sumList;
 	while (*this_line) {
 		//checks if it's "id" ,already exist in "sumList"
 		if (!strcmp((*this_line)->id, newL->id)) {
@@ -434,6 +440,7 @@ void addToSumList(Line* lin) {
 }
 
 int readAndWriteFile(FILE* file){
+
 	char string[200];
 	int sucsses = 0;
 
@@ -454,17 +461,24 @@ int readAndWriteFile(FILE* file){
 //global vuriable to the lists
 Line* head = NULL, * head_sumList = NULL;
 
-int main()
+int main(int argc, char* argv[])
 {
-	int sucsses = 0;
-
-	FILE* file = fopen("taskRavTech.csv", "a+t");
-	if (!file)
+	char* fileName;
+	int success = 0;
+	FILE* file;
+	if (argc > 1)
+		fileName = argv[2];
+	else
+		fileName = "taskRavTech.csv";
+	file = fopen(fileName, "r+t");
+	if (!file) {
+		printf("not working, or there isn't file on relative path\"%s\"",fileName);
 		return -1;
+	}
 
-	sucsses=readAndWriteFile(file);
+	success =readAndWriteFile(file);
 
-	if (!sucsses)
+	if (!success)
 		return-1;
 
 	//print all list
